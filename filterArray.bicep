@@ -1,4 +1,3 @@
-
 var varGroceryStore = [
   {
     productName: 'Icecream'
