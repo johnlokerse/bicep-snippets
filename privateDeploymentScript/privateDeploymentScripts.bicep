@@ -6,7 +6,7 @@ resource resManagedIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@20
 }
 
 resource resStorageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' = {
-  name: 'privatedeployscripts'
+  name: 'privatedeploymentscripts'
   kind: 'StorageV2'
   location: parLocation
   sku: {
@@ -38,7 +38,7 @@ resource resPrivateEndpoint 'Microsoft.Network/privateEndpoints@2023-05-01' = {
     ]
     customNetworkInterfaceName: '${resStorageAccount.name}-nic'
     subnet: {
-      id: first(filter(resVirtualNetwork.properties.subnets, subnet => subnet.name == 'PrivateEndpointSubnet'))!.id
+      id: resVirtualNetwork::resPrivateEndpointSubnet.id
     }
    }
 }
@@ -95,33 +95,32 @@ resource resVirtualNetwork 'Microsoft.Network/virtualNetworks@2023-05-01' = {
         '192.168.4.0/23'
       ]
     }
-    subnets: [
-      {
-        name: 'PrivateEndpointSubnet'
-        properties: {
-          addressPrefixes: [
-            '192.168.4.0/24'
-          ]
+  }
+
+  resource resPrivateEndpointSubnet 'subnets' = {
+    name: 'PrivateEndpointSubnet'
+    properties: {
+      addressPrefixes: [
+        '192.168.4.0/24'
+      ]
+    }
+  }
+
+  resource resContainerInstanceSubnet 'subnets' = {
+    name: 'ContainerInstanceSubnet'
+    properties: {
+      addressPrefix: '192.168.5.0/24'
+      delegations: [
+        {
+          name: 'containerDelegation'
+          properties: {
+            serviceName: 'Microsoft.ContainerInstance/containerGroups'
+          }
         }
-      }
-      {
-        name: 'ContainerInstanceSubnet'
-        properties: {
-          addressPrefix: '192.168.5.0/24'
-          delegations: [
-            {
-              name: 'containerDelegation'
-              properties: {
-                serviceName: 'Microsoft.ContainerInstance/containerGroups'
-              }
-            }
-          ]
-        }
-      }
-    ]
+      ]
+    }
   }
 }
-
 
 resource resPrivateDeploymentScript 'Microsoft.Resources/deploymentScripts@2023-08-01' = {
   name: 'my-private-deployment-script'
@@ -144,7 +143,7 @@ resource resPrivateDeploymentScript 'Microsoft.Resources/deploymentScripts@2023-
     containerSettings: {
       subnetIds: [
         {
-          id: first(filter(resVirtualNetwork.properties.subnets, subnet => subnet.name == 'ContainerInstanceSubnet'))!.id
+          id: resVirtualNetwork::resContainerInstanceSubnet.id
         }
       ]
     }
